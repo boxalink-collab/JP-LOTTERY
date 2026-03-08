@@ -1,0 +1,13 @@
+{
+  "name": "jp-lottery-validator",
+  "version": "1.0.0",
+  "description": "Validation automatique des gagnants JP-Lottery via GitHub Actions",
+  "private": true,
+  "scripts": {
+    "validate": "node validate-winners.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

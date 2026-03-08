@@ -1,0 +1,77 @@
+# =========================================================
+#  JP-LOTTERY — .github/workflows/validate-winners.yml
+#
+#  Validation automatique des gagnants
+#  GRATUIT — Aucune carte bancaire requise
+#
+#  DÉCLENCHEMENTS :
+#    - Toutes les heures (cron)
+#    - Aux heures de tirage : 17h, 18h, 19h, 20h, 21h UTC
+#      (= 18h-22h heure Lomé / Cotonou)
+#    - Manuellement depuis onglet Actions → Run workflow
+#    - Sur push de ce fichier (pour tester)
+#
+#  SETUP (une seule fois) :
+#    GitHub → Settings → Secrets and variables → Actions
+#    Ajouter 3 secrets :
+#      FIREBASE_PROJECT_ID   → ex: jp-lottery-abc12
+#      FIREBASE_CLIENT_EMAIL → ex: firebase-adminsdk@jp-lottery.iam.gserviceaccount.com
+#      FIREBASE_PRIVATE_KEY  → clé privée depuis Firebase Console (avec -----BEGIN...)
+# =========================================================
+
+name: Validation automatique des gagnants JP-Lottery
+
+on:
+  schedule:
+    - cron: '0 * * * *'     # Toutes les heures
+    - cron: '5 17 * * *'    # 17h05 UTC = 18h05 Lomé
+    - cron: '5 18 * * *'    # 18h05 UTC = 19h05 Lomé
+    - cron: '5 19 * * *'    # 19h05 UTC = 20h05 Lomé
+    - cron: '5 20 * * *'    # 20h05 UTC = 21h05 Lomé
+    - cron: '5 21 * * *'    # 21h05 UTC = 22h05 Lomé
+
+  workflow_dispatch:
+    inputs:
+      result_id:
+        description: 'ID résultat spécifique (laisser vide pour tout traiter)'
+        required: false
+        default: ''
+
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-winners.yml'
+      - 'scripts/validate-winners.js'
+      - 'scripts/package.json'
+
+jobs:
+  validate:
+    name: Valider les gagnants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/package.json
+
+      - name: Installer les dépendances
+        run: cd scripts && npm install
+
+      - name: Valider les gagnants
+        env:
+          FIREBASE_PROJECT_ID:   ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY:  ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          RESULT_ID:             ${{ github.event.inputs.result_id }}
+        run: cd scripts && node validate-winners.js
+
+      - name: Résumé
+        if: always()
+        run: echo "Validation terminée — consultez les logs ci-dessus pour le détail."
